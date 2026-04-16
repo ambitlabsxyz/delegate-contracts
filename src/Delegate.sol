@@ -30,8 +30,14 @@ contract Delegate {
   /// @dev Used for on-chain previewing via the Uniswap Quoter revert-call pattern — the caller
   /// wraps this in a try/catch to capture the return value without committing state changes.
   function revertCall(address target, bytes calldata data) external returns (bytes memory) {
+    return revertCall(target, data, 0);
+  }
+
+  /// @dev Used for on-chain previewing via the Uniswap Quoter revert-call pattern — the caller
+  /// wraps this in a try/catch to capture the return value without committing state changes.
+  function revertCall(address target, bytes calldata data, uint256 value) public returns (bytes memory) {
     require(msg.sender == owner());
-    bytes memory result = Address.functionCall(target, data);
+    bytes memory result = Address.functionCallWithValue(target, data, value);
     assembly {
       revert(add(result, 0x20), mload(result))
     }

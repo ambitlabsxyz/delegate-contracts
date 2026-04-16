@@ -14,40 +14,53 @@ library DelegateLib {
     return payable(Clones.cloneDeterministicWithImmutableArgs(implementation, abi.encode(address(this)), salt));
   }
 
-  function predict(address implementation, uint256 salt) internal view returns (address payable) {
-    return predict(implementation, bytes32(salt));
+  function predict(address implementation, uint256 salt, address deployer) internal view returns (address payable) {
+    return predict(implementation, bytes32(salt), deployer);
   }
 
-  function predict(address implementation, bytes32 salt) internal view returns (address payable addr) {
+  function predict(
+    address implementation,
+    bytes32 salt,
+    address deployer
+  ) internal view returns (address payable addr) {
     addr = payable(
-      Clones.predictDeterministicAddressWithImmutableArgs(
-        implementation,
-        abi.encode(address(this)),
-        salt,
-        address(this)
-      )
+      Clones.predictDeterministicAddressWithImmutableArgs(implementation, abi.encode(address(this)), salt, deployer)
     );
   }
 
   function safeTransfer(Delegate delegate, address token, address to, uint256 amount) internal {
     bytes memory result = delegate.call(token, abi.encodeCall(IERC20.transfer, (to, amount)));
-    require((result.length == 0 && token.code.length > 0) || abi.decode(result, (bool)));
+    require(checkReturn(result, token));
   }
 
   function safeTransferFrom(Delegate delegate, address token, address from, address to, uint256 amount) internal {
     bytes memory result = delegate.call(token, abi.encodeCall(IERC20.transferFrom, (from, to, amount)));
-    require((result.length == 0 && token.code.length > 0) || abi.decode(result, (bool)));
+    require(checkReturn(result, token));
+  }
+
+  function checkReturn(bytes memory result, address token) private view returns (bool) {
+    if (result.length == 0) {
+      return token.code.length > 0;
+    }
+    return result.length >= 32 && abi.decode(result, (bool));
   }
 
   function safeApprove(Delegate delegate, address token, address spender, uint256 amount) internal {
-    bytes memory result = delegate.call(token, abi.encodeCall(IERC20.approve, (spender, amount)));
-    bool success = (result.length == 0 && token.code.length > 0) || abi.decode(result, (bool));
+    bool success;
+    try delegate.call(token, abi.encodeCall(IERC20.approve, (spender, amount))) returns (bytes memory result) {
+      success = checkReturn(result, token);
+    } catch {
+      success = false;
+    }
 
-    // USDT-style: if approve fails, reset to 0 first then set
     if (success == false) {
-      delegate.call(token, abi.encodeCall(IERC20.approve, (spender, 0)));
+      // USDT-style: some tokens require resetting allowance to 0 before changing a non-zero allowance.
+      // Both the reset and the retry must succeed.
+      bytes memory result = delegate.call(token, abi.encodeCall(IERC20.approve, (spender, 0)));
+      require(checkReturn(result, token));
+
       result = delegate.call(token, abi.encodeCall(IERC20.approve, (spender, amount)));
-      require((result.length == 0 && token.code.length > 0) || abi.decode(result, (bool)));
+      require(checkReturn(result, token));
     }
   }
 }
