@@ -6,4 +6,13 @@ remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
 ]
 
+[rpc_endpoints] 
+local = "http://127.0.0.1:8545"
+eth = "https://rpc.flashbots.net"
+avax = "https://api.avax.network/ext/bc/C/rpc"
+plume = "https://rpc.plume.org"
+plume-testnet = "https://testnet-rpc.plume.org"
+hyperevm = "https://rpc.hyperliquid.xyz/evm"
+hyperevm-testnet = "https://rpc.hyperliquid-testnet.xyz/evm"
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
