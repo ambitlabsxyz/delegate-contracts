@@ -14,7 +14,7 @@ library DelegateLib {
     return payable(Clones.cloneDeterministicWithImmutableArgs(implementation, abi.encode(address(this)), salt));
   }
 
-  function predict(address implementation, uint256 salt, address deployer) internal view returns (address payable) {
+  function predict(address implementation, uint256 salt, address deployer) internal pure returns (address payable) {
     return predict(implementation, bytes32(salt), deployer);
   }
 
@@ -22,9 +22,9 @@ library DelegateLib {
     address implementation,
     bytes32 salt,
     address deployer
-  ) internal view returns (address payable addr) {
+  ) internal pure returns (address payable addr) {
     addr = payable(
-      Clones.predictDeterministicAddressWithImmutableArgs(implementation, abi.encode(address(this)), salt, deployer)
+      Clones.predictDeterministicAddressWithImmutableArgs(implementation, abi.encode(deployer), salt, deployer)
     );
   }
 

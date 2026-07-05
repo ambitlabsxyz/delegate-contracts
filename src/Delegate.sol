@@ -6,6 +6,9 @@ import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
 /// @notice Minimal executor contract deployed as an EIP-1167 clone.
 contract Delegate {
+  error RevertCallSuccess(bytes result);
+  error RevertCallFailure(bytes result);
+
   receive() external payable {}
 
   function owner() public view returns (address) {
@@ -27,19 +30,16 @@ contract Delegate {
     return Address.functionCallWithValue(target, data, value);
   }
 
-  /// @dev Used for on-chain previewing via the Uniswap Quoter revert-call pattern — the caller
-  /// wraps this in a try/catch to capture the return value without committing state changes.
-  function revertCall(address target, bytes calldata data) external returns (bytes memory) {
-    return revertCall(target, data, 0);
+  function revertCall(address target, bytes calldata data) external {
+    revertCall(target, data, 0);
   }
 
-  /// @dev Used for on-chain previewing via the Uniswap Quoter revert-call pattern — the caller
-  /// wraps this in a try/catch to capture the return value without committing state changes.
-  function revertCall(address target, bytes calldata data, uint256 value) public returns (bytes memory) {
+  function revertCall(address target, bytes calldata data, uint256 value) public {
     require(msg.sender == owner());
-    bytes memory result = Address.functionCallWithValue(target, data, value);
-    assembly {
-      revert(add(result, 0x20), mload(result))
+    (bool success, bytes memory result) = target.call{ value: value }(data);
+    if (success) {
+      revert RevertCallSuccess(result);
     }
+    revert RevertCallFailure(result);
   }
 }
